@@ -52,6 +52,8 @@ public class SabanciMetuTreeBankAnalysisFormatter implements AnalysisFormatter {
         final String formattedLexeme = Joiner.on("+").skipNulls().join(Arrays.asList(lemmaRoot, primaryPos.getStringForm(), secondaryPosStr));
 
         List<String> currentGroup = new ArrayList<String>(Arrays.asList(formattedLexeme));
+        PrimaryPos currentPos = primaryPos;
+        int currentMorphemeCountInDerivationalGroup = 0;
 
         List<SingleAnalysis.MorphemeData> surfaces = analysis.getMorphemeDataList();
         for (int i = 1; i < surfaces.size(); i++) {
@@ -62,10 +64,21 @@ public class SabanciMetuTreeBankAnalysisFormatter implements AnalysisFormatter {
                 groups.add(currentGroup);
                 String nextGroupPos = "";
                 if (surfaces.size() >= i + 1) {
-                    nextGroupPos = surfaces.get(i + 1).morpheme.pos.getStringForm();
+                    final PrimaryPos nextPos = surfaces.get(i + 1).morpheme.pos;
+                    nextGroupPos = nextPos.getStringForm();
+                    currentPos = nextPos;
                 }
                 currentGroup = new ArrayList<>(Arrays.asList(nextGroupPos));
+                currentMorphemeCountInDerivationalGroup = 0;
             }
+
+            if (!morpheme.derivational) {
+                if (currentPos == PrimaryPos.Verb && !morpheme.id.startsWith("Neg") && currentMorphemeCountInDerivationalGroup == 0) {
+                    currentGroup.add("Pos");
+                }
+            }
+
+            currentMorphemeCountInDerivationalGroup++;
 
             currentGroup.add(s.morpheme.id);
         }
