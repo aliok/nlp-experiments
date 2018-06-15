@@ -1,6 +1,5 @@
 package experiments;
 
-import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.*;
 import com.google.common.io.CharSource;
@@ -8,10 +7,8 @@ import com.google.common.io.LineProcessor;
 import com.google.common.io.Resources;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import zemberek.morphology.TurkishMorphology;
 import zemberek.morphology.analysis.AnalysisFormatter;
-import zemberek.morphology.analysis.SingleAnalysis;
 import zemberek.morphology.analysis.WordAnalysis;
 
 import java.io.IOException;
@@ -25,56 +22,9 @@ public class DisambiguateSentences {
     public static void main(String[] args) throws IOException {
 
         TurkishMorphology morphology = TurkishMorphology.createWithDefaults();
-        final AnalysisFormatter formatter = new SabanciMetuTreeBankAnalysisFormatter(true);
+        final AnalysisFormatter formatter = new SabanciMetuTreeBankAnalysisFormatter2(true);
 
         doExperiment(999, false, morphology, formatter);
-
-
-//
-//            final List<MorphemeContainer> retrievedResults = this.parse(surfaceToParse);
-//            if (Character.isUpperCase(surfaceToParse.charAt(0))) {
-//                retrievedResults.addAll(this.parse(Character.toLowerCase(surfaceToParse.charAt(0)) + surfaceToParse.substring(1)));
-//            }
-//
-//            if (CollectionUtils.isEmpty(retrievedResults)) {
-//                if (printSurfaces)
-//                    System.out.println("Surface '" + surfaceToParse + "' is not parseable");
-//                unparsableSurfaces.add(surfaceToParse + "\t" + expectedResult);
-//                unparsable++;
-//            } else {
-//                final Collection<String> formattedRetrievedResults = MorphemeContainerFormatter.formatMorphemeContainersWithDerivationGrouping(retrievedResults);
-//                if (!formattedRetrievedResults.contains(expectedResult)) {
-//                    if (printSurfaces) {
-//                        System.out.println("Surface '" + surfaceToParse + "' is parseable, but expected result '" + expectedResult + "' is not found!");
-//                        System.out.println("\t" + Joiner.on("\n\t").join(formattedRetrievedResults));
-//                    }
-//                    incorrectParsedSurfaces.add(expectedResult);
-//                    incorrectParses++;
-//                }
-//            }
-//        }
-//
-
-//
-//
-//        TurkishMorphology morphology = TurkishMorphology.createWithDefaults();
-//
-//        String sentence = "Yarın akşam kar yağacak gibi.";
-//        Log.info("Sentence  = " + sentence);
-//        List<WordAnalysis> analyses = morphology.analyzeSentence(sentence);
-//
-//        Log.info("Sentence word analysis result:");
-//        for (WordAnalysis entry : analyses) {
-//            Log.info("Word = " + entry.getInput());
-//            for (SingleAnalysis analysis : entry) {
-//                Log.info(analysis.formatLong());
-//            }
-//        }
-//        SentenceAnalysis result = morphology.disambiguate(sentence, analyses);
-//
-//        Log.info("\nAfter ambiguity resolution : ");
-//
-//        result.bestAnalysis().forEach(Log::info);
     }
 
     private static void doExperiment(int index, boolean printSurfaces, TurkishMorphology morphology, AnalysisFormatter formatter) throws IOException {
@@ -148,15 +98,15 @@ public class DisambiguateSentences {
         final ImmutableMultiset<String> unparsableSurfacesByFrequencies = Multisets.copyHighestCountFirst(unparsableSurfaces);
         final ImmutableMultiset<String> incorrectParsedSurfacesByFrequencies = Multisets.copyHighestCountFirst(incorrectParsedSurfaces);
 
-        System.out.println("=====Unparsable surfaces");
-        for (Multiset.Entry<String> entry : unparsableSurfacesByFrequencies.entrySet()) {
-            System.out.println(entry.getElement() + "\t\t\t" + entry.getCount());
-        }
-
         System.out.println("=====Incorrect parsed surfaces with occurrence count > 1=====");
         for (Multiset.Entry<String> entry : incorrectParsedSurfacesByFrequencies.entrySet()) {
             if (entry.getCount() > 1)
                 System.out.println(entry.getElement() + "\t\t\t" + entry.getCount());
+        }
+
+        System.out.println("=====Unparsable surfaces");
+        for (Multiset.Entry<String> entry : unparsableSurfacesByFrequencies.entrySet()) {
+            System.out.println(entry.getElement() + "\t\t\t" + entry.getCount());
         }
 
 
@@ -202,14 +152,14 @@ public class DisambiguateSentences {
     }
 
     private static final ImmutableMap<String, String> PARSE_RESULT_REPLACE_HACK_MAP = new ImmutableMap.Builder<String, String>()
-            // for example, in simple parse set, there is a suffix Prog1 for "iyor", and Prog2 for "makta"
-            // but, we don't differentiate them and use "Prog" for both
-            // thus, we need a small hack for validating simple parse sets
-            .put("Prog1", "Prog")
-            .put("Prog2", "Prog")
-            .put("Inf1", "Inf")
-            .put("Inf2", "Inf")
-            .put("Inf3", "Inf")
+//            // for example, in simple parse set, there is a suffix Prog1 for "iyor", and Prog2 for "makta"
+//            // but, we don't differentiate them and use "Prog" for both
+//            // thus, we need a small hack for validating simple parse sets
+//            .put("Prog1", "Prog")
+//            .put("Prog2", "Prog")
+//            .put("Inf1", "Inf")
+//            .put("Inf2", "Inf")
+//            .put("Inf3", "Inf")
             .put("WithoutHavingDoneSo1", "WithoutHavingDoneSo")
             .put("WithoutHavingDoneSo2", "WithoutHavingDoneSo")
 
@@ -258,6 +208,52 @@ public class DisambiguateSentences {
 
 
             .add("yüzeysel").add("çıtırlarla").add("vahlara").add("epeyce").add("ekononomik")
+
+            // it is very hard to hack convert these from Zemberek to BounWebCorpus format
+            //    NOPE: ise ----> (1,"ise+Conj") ----> [(1,"ise+Adv"), (1,"i+Verb+Cond+A3sg"), (1,"is+Noun+A3sg+Pnon+Dat")]			61
+            .add("ise")
+            //    NOPE: var ----> (1,"var+Adj")(2,"Verb+Zero+Pres+A3sg") ----> [(1,"var+Adj"), (1,"var+Verb+Imp+A2sg"), (1,"var+Noun+A3sg+Pnon+Nom")]			56
+            .add("var")
+            //    NOPE: zaman ----> (1,"zaman+Adv") ----> [(1,"zaman+Noun+Time+A3sg")]			45
+            .add("zaman")
+            //    NOPE: iyi ----> (1,"iyi+Adj")(2,"Adv+Zero") ----> [(1,"iyi+Adj"), (1,"iyi+Adv"), (1,"i+Noun+Prop+A3sg+Pnon+Acc"), (1,"iyi+Noun+A3sg+Pnon+Nom")]			35
+            .add("iyi")
+            //    NOPE: kendi ----> (1,"kendi+Pron+Reflex+A3sg+P3sg+Nom") ----> [(1,"kendi+Noun+A3sg+Pnon+Nom")
+            .add("kendi")
+            // kendini ----> (1,"kendi+Pron+Reflex+A3sg+P3sg+Acc") ----> [(1,"kendi+Noun+A3sg+P2sg+Acc")]			13
+            .add("kendini")
+            // kendimi ----> (1,"kendi+Pron+Reflex+A1sg+P1sg+Acc") ----> [(1,"kendi+Noun+A3sg+P1sg+Acc")]			10
+            .add("kendimi")
+            // gün ----> (1,"gün+Adv") ----> [(1,"gün+Noun+Prop+A3sg"), (1,"gün+Noun+Time+A3sg+Pnon+Nom")]			25
+            .add("gün")
+            // tek ----> (1,"tek+Adj") ----> [(1,"tek+Num"), (1,"tek+Adv"), (1,"tek+Noun+Prop+A3sg"), (1,"tek+Noun+A3sg+Pnon+Nom")]			25
+            .add("tek")
+            // an ----> (1,"an+Adv") ----> [(1,"an+Verb+Imp+A2sg"), (1,"an+Noun+Time+A3sg+Pnon+Nom")]			24
+            .add("an")
+            // yok ----> (1,"yok+Adj")(2,"Verb+Zero+Pres+A3sg") ----> [(1,"yok+Conj"), (1,"yok+Adj"), (1,"yok+Adv"), (1,"yok+Adj"), (1,"yok+Noun+Prop+A3sg"), (1,"yok+Noun+A3sg+Pnon+Nom")]			23
+            .add("yok")
+            // bazı ----> (1,"bazı+Adj") ----> [(1,"bazı+Det"), (1,"baz+Noun+A3sg+Pnon+Acc"), (1,"baz+Noun+A3sg+P3sg"), (1,"baz+Adj")(2,"Noun+Zero+A3sg+Pnon+Acc"), (1,"baz+Adj")(2,"Noun+Zero+A3sg+P3sg")]			21
+            .add("bazı")
+            // biri ----> (1,"biri+Pron+A3sg+P3sg+Nom") ----> [(1,"bir+Noun+Prop+A3sg+Pnon+Acc"), (1,"bir+Noun+Prop+A3sg+P3sg"), (1,"biri+Pron+Quant+A3sg+P3sg"), (1,"bir+Adj")(2,"Noun+Zero+A3sg+Pnon+Acc"), (1,"bir+Adj")(2,"Noun+Zero+A3sg+P3sg"), (1,"bir+Num+Card")(2,"Noun+Zero+A3sg+Pnon+Acc"), (1,"bir+Num+Card")(2,"Noun+Zero+A3sg+P3sg")]			21
+            .add("biri")
+            // burada ----> (1,"bura+Pron+A3sg+Pnon+Loc") ----> [(1,"bura+Noun+A3sg+Pnon+Loc")]			20
+            .add("burada")
+            // buraya ----> (1,"bura+Pron+A3sg+Pnon+Dat") ----> [(1,"bura+Noun+A3sg+Pnon+Dat")]			14
+            .add("buraya")
+            // orada ----> (1,"ora+Pron+A3sg+Pnon+Loc") ----> [(1,"ora+Noun+A3sg+Pnon+Loc")]			14
+            .add("orada")
+            // oraya ----> (1,"ora+Pron+A3sg+Pnon+Dat") ----> [(1,"ora+Noun+A3sg+Pnon+Dat"), (1,"oray+Noun+Prop+A3sg+Pnon+Dat")]			14
+            .add("oraya")
+            // ilgili ----> (1,"ilgili+Noun+A3sg+Pnon+Nom") ----> [(1,"ilgi+Noun+A3sg+Pnon+Nom")(2,"Adj+With")]			20
+            .add("ilgili")
+            // üzerinde ----> (1,"üzer+Noun+A3sg+P3sg+Loc") ----> [(1,"üzerinde+Adv"), (1,"üzer+Noun+Prop+A3sg+P2sg+Loc"), (1,"üzer+Noun+Prop+A3sg+P3sg+Loc"), (1,"üzeri+Noun+A3sg+P2sg+Loc"), (1,"üzeri+Noun+Prop+A3sg+P2sg+Loc")]			17
+            .add("üzerinde")
+            // üzerine ----> (1,"üzer+Noun+A3sg+P3sg+Dat") ----> [(1,"üzerine+Adv"), (1,"üzer+Noun+Prop+A3sg+P2sg+Dat"), (1,"üzer+Noun+Prop+A3sg+P3sg+Dat"), (1,"üzeri+Noun+A3sg+P2sg+Dat"), (1,"üzeri+Noun+Prop+A3sg+P2sg+Dat")]			16
+            .add("üzerine")
+            // üzerindeki ----> (1,"üzer+Noun+A3sg+P3sg+Loc")(2,"Adj+PointQual") ----> [(1,"üzer+Noun+Prop+A3sg+P2sg+Loc")(2,"Adj+Rel"), (1,"üzer+Noun+Prop+A3sg+P3sg+Loc")(2,"Adj+Rel"), (1,"üzeri+Noun+A3sg+P2sg+Loc")(2,"Adj+Rel"), (1,"üzeri+Noun+Prop+A3sg+P2sg+Loc")(2,"Adj+Rel")]			7
+            .add("üzerindeki")
+            // akşam ----> (1,"akşam+Adv") ----> [(1,"akşam+Noun+Time+A3sg+Pnon+Nom")]			16
+            .add("akşam")
 
             .build();
 
